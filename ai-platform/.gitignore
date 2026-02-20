@@ -1,0 +1,23 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.idea/
+.vscode/
+
+# Ignore local container data
+infra/data/
+docker_data/
+
+# Mac OS
+.DS_Store
+
+# Python build
+dist/
+build/
+*.egg-info/
+
+# Tests
+.pytest_cache/
+coverage.xml
+.coverage

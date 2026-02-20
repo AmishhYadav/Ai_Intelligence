@@ -1,0 +1,9 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+venv
+.env
+.pytest_cache/
+infra/data/
+docker_data/

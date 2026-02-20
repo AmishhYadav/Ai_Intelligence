@@ -1,0 +1,4 @@
+confluent-kafka==2.4.0
+pydantic==2.7.4
+qdrant-client==1.9.1
+google-generativeai==0.5.4
