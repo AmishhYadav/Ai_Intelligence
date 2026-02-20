@@ -129,6 +129,19 @@ services:
       kafka:
         condition: service_healthy
 
+  frontend_ui:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    container_name: ai-platform-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api_gateway:8000/v1
+      - JWT_SECRET_KEY=your_super_secret_jwt_key
+    depends_on:
+      - api_gateway
+
 volumes:
   kafka_data:
   redis_data:

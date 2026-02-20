@@ -12,9 +12,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librdkafka-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy the entire context so services have their requirements and source files
+COPY . .
+
 # Create a non-root user for security (12 factor app)
-RUN addgroup --system appgroup && adduser --system --group appuser
+RUN useradd -m -r -s /bin/bash appuser && chown -R appuser:appuser /app
 USER appuser
+
+# Expose local bin for user-installed pip packages
+ENV PATH="/home/appuser/.local/bin:${PATH}"
 
 # Standard entry command (to be overriden or specified in specific dockerfiles)
 CMD ["python", "main.py"]
