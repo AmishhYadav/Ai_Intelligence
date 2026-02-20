@@ -12,9 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librdkafka-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app/
-RUN pip install -r requirements.txt
-
 # Create a non-root user for security (12 factor app)
 RUN addgroup --system appgroup && adduser --system --group appuser
 USER appuser
