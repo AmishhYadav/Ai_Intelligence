@@ -49,6 +49,9 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       kafka:
         condition: service_healthy
@@ -64,6 +67,8 @@ services:
     ports:
       - "8001:8001"
     env_file: .env
+    environment:
+      - QDRANT_URL=http://qdrant:6333
     depends_on:
       - qdrant
 
@@ -84,6 +89,8 @@ services:
     container_name: ai-platform-ingestion
     command: sh -c "pip install -r services/ingestion_service/requirements.txt && python services/ingestion_service/main.py"
     env_file: .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       kafka:
         condition: service_healthy
@@ -95,6 +102,9 @@ services:
     container_name: ai-platform-embedding
     command: sh -c "pip install -r services/embedding_service/requirements.txt && python services/embedding_service/main.py"
     env_file: .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - QDRANT_URL=http://qdrant:6333
     depends_on:
       kafka:
         condition: service_healthy
@@ -108,6 +118,11 @@ services:
     container_name: ai-platform-agent
     command: sh -c "pip install -r services/agent_service/requirements.txt && python services/agent_service/main.py"
     env_file: .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://redis:6379/0
+      - RETRIEVAL_API_URL=http://retrieval_service:8001/v1/search
+      - MCP_SERVER_URL=http://mcp_server:8002/tools/execute
     depends_on:
       kafka:
         condition: service_healthy
@@ -125,6 +140,8 @@ services:
     container_name: ai-platform-alert
     command: sh -c "pip install -r services/alert_service/requirements.txt && python services/alert_service/main.py"
     env_file: .env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       kafka:
         condition: service_healthy

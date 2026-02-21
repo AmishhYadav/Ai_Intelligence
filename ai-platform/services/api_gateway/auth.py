@@ -29,10 +29,15 @@ def create_demo_token():
         expires_delta=timedelta(days=365)
     )
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)):
+class UserContext:
+    def __init__(self, user_id: str, roles: list):
+        self.user_id = user_id
+        self.roles = roles
+
+def verify_jwt(credentials: HTTPAuthorizationCredentials = Security(security)):
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        return UserContext(user_id=payload.get("sub", "unknown"), roles=payload.get("roles", []))
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Signature has expired")
     except jwt.InvalidTokenError:
