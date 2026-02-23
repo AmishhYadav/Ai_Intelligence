@@ -32,50 +32,86 @@ graph TD
     AGT -->|Alert| ALT[Alert Service]
 ```
 
-## Infrastructure Map
+## 🛰 Event-Driven Architecture (EDA)
 
-```text
-API Gateway --> (Publishes) -> [Kafka] -> (Consumes) -> Event Ingestion
-Event Ingestion -> (Publishes) -> [Kafka] -> (Consumes) -> Embedding Worker
-Event Ingestion -> (Publishes) -> [Kafka] -> (Consumes) -> Reasoning Agent
-Reasoning Agent <--> Redis (Session State)
-Reasoning Agent <--> Retrieval Service <--> Qdrant DB
-Reasoning Agent <--> MCP Tool Server
-Reasoning Agent -> (Publishes) -> [Kafka] -> (Consumes) -> Alert Service
+The platform utilizes a decoupled EDA to ensure high availability and non-blocking inference.
+
+### Kafka Topic Schema
+| Topic | Producer | Consumer(s) | Payload Type | Description |
+|-------|----------|-------------|--------------|-------------|
+| `user_events` | API Gateway | Ingestion Service | JSON | Raw user queries and metadata. |
+| `ingestion_events`| Ingestion | Embedding Worker | JSON | Chunked text for vectorization. |
+| `reasoning_tasks` | Ingestion | Reasoning Agent | JSON | Orchestration tasks for LLMs. |
+| `alerts` | Agent | Alert Service | JSON | Critical system or LLM alerts. |
+
+---
+
+## ⚙️ Configuration Matrix (.env)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GOOGLE_API_KEY` | Yes | - | API Key for Gemini Pro/Flash models. |
+| `ANTHROPIC_API_KEY`| No | - | API Key for Claude models (optional). |
+| `KAFKA_BOOTSTRAP_SERVERS` | Yes | `kafka:9092` | List of Kafka brokers. |
+| `REDIS_URL` | Yes | `redis://redis:6379/0` | Connection string for session state. |
+| `QDRANT_URL` | Yes | `http://qdrant:6333` | Vector database endpoint. |
+| `JWT_SECRET_KEY` | Yes | - | Secret key for signing Auth tokens. |
+
+---
+
+## 🏗 Microservices Deep-Dive
+
+- **`api_gateway`**: Built with FastAPI. Handles SSL termination (at ingress), JWT validation, and rate limiting via Redis. It publishes to the `user_events` topic.
+- **`ingestion_service`**: The traffic controller. It uses asynchronous workers to split large documents and route them as either embedding jobs or reasoning tasks.
+- **`embedding_service`**: Scales horizontally. It calls Gemini/Claude embedding endpoints and upserts vectors into Qdrant.
+- **`retrieval_service`**: Exposes a clean API for the Reasoning Agent to perform hybrid search (vector + scalar filters) on Qdrant.
+- **`agent_service`**: The "brain". Implements a ReAct loop. It maintains multi-turn conversation memory in Redis and executes tools via the MCP Server.
+- **`mcp_server`**: A modular tool server implementing the Model Context Protocol. Easily extensible via standard JSON-RPC.
+- **`alert_service`**: Monitors the `alerts` Kafka topic and dispatches notifications via webhooks/Slack.
+
+---
+
+## 🧪 Testing & Quality Assurance
+
+### 1. Automated Testing Suites
+- **Unit Tests**: Coverage for individual service logic.
+  ```bash
+  pytest services/agent_service/tests
+  ```
+- **Integration Tests**: Validating Kafka message flow between services.
+  ```bash
+  pytest tests/integration
+  ```
+- **Load Testing**: Using Locust/Custom scripts to simulate concurrent sessions.
+  ```bash
+  python scripts/load_test.py --users 100 --spawn-rate 10
+  ```
+
+### 2. CI/CD Integration
+The project includes a `.github/workflows` pipeline (if present) that runs the following on every PR:
+- `flake8 / black` formatting checks.
+- `mypy` static type analysis.
+- Full test suite execution in a Dockerized environment.
+
+---
+
+## 📊 Observability & Monitoring
+
+- **Structured Logging**: Every service emits JSON logs (via `JSONFormatter`) for easy ingestion into ELK/Prometheus.
+- **Health Probes**: `/health` endpoints return detailed component status (e.g., Kafka connection state, DB latency).
+- **Traces**: (Planned) OpenTelemetry integration for end-to-end request tracing.
+
+---
+
+## 🚀 Setup & Deployment
+
+### Local Development
+```bash
+docker-compose up --build -d
 ```
 
-## Setup & Deployment (Local)
-
-1. Clone the repository.
-2. Provide your API keys in the `.env` file (see `.env.example`).
-3. Run the complete architecture using Docker Compose:
-    ```bash
-    docker-compose up --build -d
-    ```
-4. Verify Health checks: `http://localhost:8000/health`
-5. Test Load via Simulation script:
-    ```bash
-    python scripts/load_test.py
-    ```
-
-## Setup & Deployment (Kubernetes - Minikube)
-
-1. Start minikube: `minikube start`
-2. Create namespace: `kubectl create namespace ai-platform`
-3. Apply ConfigMaps and Secrets: `kubectl apply -f infra/k8s/config.yaml`
-4. Deploy the API Gateway: `kubectl apply -f infra/k8s/api-gateway.yaml`
-    * Note: You must build and load the docker image into minikube first or use a registry. `minikube image load ai-platform/api-gateway:latest`
-    * You can replicate the deployment pattern for the other 6 microservices easily using the gateway helm/yaml standard shown.
-
-## Microservices Breakdown
-- `api_gateway`: Ingress FastAPI layer handling Authentication (JWT) and Rate limiting (Redis).
-- `ingestion_service`: Event router splitting monolithic inputs into Vectorization jobs and reasoning tasks.
-- `embedding_service`: Worker bridging unstructured text to Qdrant vector space via Google Gemini.
-- `retrieval_service`: Private network service exposing Hybrid Vector Search abstractions.
-- `agent_service`: Core intelligent hub coordinating Memory, Vector Context, Tool Execution, and final reasoning.
-- `mcp_server`: Modular Function-Calling endpoint enforcing the Model Context Protocol schema logic.
-- `alert_service`: Egress webhook dispatcher logging simulated CRITICAL risk events.
-
-## Observability
-- All files use a `JSONFormatter` guaranteeing structured JSON logging across the architecture.
-- Health Probes (`/health`) natively integrated across threaded async Kafka consumers and standard FastAPIs. 
+### Kubernetes (Production)
+```bash
+kubectl apply -f infra/k8s/
+```
+*Note: Refer to the `infra/` directory for Helm charts and specialized K8s manifests.*
