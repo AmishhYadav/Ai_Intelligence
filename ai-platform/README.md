@@ -2,11 +2,35 @@
 
 A Cloud-Native, Event-Driven AI Platform designed for high scalability, real-time streaming, and autonomous reasoning. This is not a monolith; it is a distributed microservice architecture heavily adhering to Clean Architecture principles, 12-factor app guidelines, and the Model Context Protocol (MCP).
 
-## Architecture Highlights
-*   **Event Broker**: Apache Kafka processes non-blocking, async events (`user_events`, `ingestion_events`, `embedding_jobs`, `reasoning_tasks`, `alerts`).
-*   **Agentic Intelligence**: Powered by Google Gemini. The Reasoning Agent maintains conversational history in Redis, queries Qdrant for RAG Context, and calls external tools via an MCP Server.
-*   **RAG Backend**: Qdrant Vector Database coupled with an abstract Repository pattern layer for semantic + metadata search.
-*   **Scalability**: Containerized on Kubernetes. HPA natively scales the stateless API Gateway and stateless workers based on CPU load or Kafka consumer lag.
+## 🛠 Tech Stack
+
+| Component          | Technology                                                                                                                                      |
+|--------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Frontend**       | ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=Streamlit&logoColor=white)                                      |
+| **API Gateway**    | ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat-square&logo=fastapi) ![Uvicorn](https://img.shields.io/badge/Uvicorn-4051b5?style=flat-square) |
+| **Event Bus**      | ![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000?style=flat-square&logo=apachekafka)                                               |
+| **Vector DB**      | ![Qdrant](https://img.shields.io/badge/Qdrant-f33f3e?style=flat-square)                                                                           |
+| **State/Cache**    | ![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=flat-square&logo=redis&logoColor=white)                                           |
+| **AI Models**      | Google Gemini, Anthropic Claude                                                                                                                 |
+| **Protocols**      | Model Context Protocol (MCP), JWT, gRPC (internal)                                                                                              |
+| **Infrastructure** | ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat-square&logo=docker&logoColor=white) ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=flat-square&logo=kubernetes&logoColor=white) |
+
+## 🏗 Architecture Map
+
+```mermaid
+graph TD
+    UI[Frontend UI] -->|REST/JWT| GW[API Gateway]
+    GW -->|Produce| K[Kafka Event Bus]
+    K -->|Consume| ING[Ingestion Service]
+    ING -->|Vectorize| EMB[Embedding Service]
+    EMB -->|Store| QD[Qdrant Vector DB]
+    K -->|Trigger| AGT[Reasoning Agent]
+    AGT -->|Search| RET[Retrieval Service]
+    RET -->|Query| QD
+    AGT -->|Context| RED[Redis Session Store]
+    AGT -->|Execute| MCP[MCP Tool Server]
+    AGT -->|Alert| ALT[Alert Service]
+```
 
 ## Infrastructure Map
 
